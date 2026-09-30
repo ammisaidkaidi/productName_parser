@@ -1,0 +1,951 @@
+PRODUCTNAME_PARSER — MASTER BUILD PROMPT
+========================================
+
+Role
+----
+You are a senior TypeScript/Node.js library architect specializing in:
+
+- Local LLM inference
+- Structured information extraction
+- Function calling and tool calling
+- Product catalog normalization
+- Deterministic data pipelines
+- Runtime schema validation
+- Field-level confidence estimation
+- Configurable domain-specific parsing
+- Offline-first applications
+
+Build the complete production-grade TypeScript/Node.js repository described below. Do not return only a conceptual architecture. Create the actual source files, configuration, tests, examples, README, and working HTML demo.
+
+The repository name is:
+
+productName_parser
+
+The project must be suitable for the Git repository:
+
+https://github.com/ammisaidkaidi/productName_parser.git
+
+1. Scope
+--------
+
+The library is responsible only for product description parsing and normalization.
+
+Do not implement:
+
+- Semantic search
+- Embeddings
+- Vector databases
+- pgvector
+- BM25
+- Ranking
+- Recommendation
+- Product similarity search
+
+The core parser must work offline without OpenAI, cloud APIs, internet access, or external databases. A local LLM is optional and injectable.
+
+2. Core objective
+-----------------
+
+Input:
+
+ROBINET ARRET LAITON MF 1/2 SOMATHERM PRO REF RA12
+
+Expected canonical output:
+
+{
+  "category": "plomberie",
+  "subcategory": "robinet",
+  "name": "robinet d'arrêt",
+  "abbreviation": null,
+  "collisage": null,
+  "model": null,
+  "brand": "Somatherm",
+  "serie": "Pro",
+  "quality": null,
+  "madein": null,
+  "material": "laiton",
+  "dims": ["1/2"],
+  "color": null,
+  "ref": "RA12",
+  "other": ["MF"]
+}
+
+Never invent unsupported information. If a value is not supported by the input or configured domain knowledge, return null for scalar fields and [] for array fields.
+
+3. Canonical schema
+-------------------
+
+Implement a strongly typed TypeScript schema and a runtime Zod schema.
+
+interface ParsedProduct {
+  category: string | null;
+  subcategory: string | null;
+  name: string | null;
+  abbreviation: string | null;
+  collisage: string | null;
+  model: string | null;
+  brand: string | null;
+  serie: string | null;
+  quality: string | null;
+  madein: string | null;
+  material: string | null;
+  dims: string[];
+  color: string | null;
+  ref: string | null;
+  other: string[];
+}
+
+The architecture must remain extensible. Applications must be able to add configured fields without rewriting the parser pipeline or hard-coding the architecture around the initial fields.
+
+Every final result must be runtime-validated. The LLM output must never be trusted directly.
+
+4. Input preservation
+---------------------
+
+Always preserve:
+
+- rawInput: the exact original description
+- normalizedInput: the deterministic pre-normalized description
+
+Normalization must never overwrite rawInput.
+
+5. Category and subcategory taxonomy
+------------------------------------
+
+The administrator-owned example configuration must include this taxonomy:
+
+{
+  "plomberie": [
+    "pvc",
+    "bronze",
+    "robinet",
+    "pehd",
+    "pex",
+    "cuivre",
+    "raccord",
+    "vanne",
+    "flexible",
+    "siphon",
+    "évacuation",
+    "alimentation"
+  ],
+  "électricité": [
+    "câble",
+    "fil",
+    "disjoncteur",
+    "interrupteur",
+    "prise",
+    "tableau",
+    "gaine",
+    "boîte",
+    "éclairage",
+    "appareillage"
+  ],
+  "quincaillerie": [
+    "vis",
+    "boulon",
+    "écrou",
+    "rondelle",
+    "cheville",
+    "clou",
+    "charnière",
+    "serrure",
+    "poignée",
+    "cadenas"
+  ],
+  "peinture": [
+    "peinture",
+    "sous-couche",
+    "vernis",
+    "enduit",
+    "diluant",
+    "solvant",
+    "silicone",
+    "colle"
+  ],
+  "droguerie": [
+    "adhésif",
+    "colle",
+    "mastic",
+    "silicone",
+    "mousse",
+    "abrasif",
+    "nettoyage",
+    "entretien"
+  ],
+  "chauffage": [
+    "chaudière",
+    "radiateur",
+    "vanne",
+    "circulateur",
+    "vase_expansion",
+    "purgeur",
+    "thermostat",
+    "raccord",
+    "tube",
+    "cheminée"
+  ],
+  "outillage": [
+    "perceuse",
+    "meuleuse",
+    "visseuse",
+    "marteau",
+    "pince",
+    "tournevis",
+    "clé",
+    "scie",
+    "mètre",
+    "niveau"
+  ],
+  "construction": [
+    "ciment",
+    "mortier",
+    "plâtre",
+    "béton",
+    "sable",
+    "gravier",
+    "ferraillage",
+    "étanchéité"
+  ]
+}
+
+The demo may add explicitly configured extensions for domains not covered by this taxonomy, for example:
+
+informatique:
+- pc portable
+- ordinateur
+- ordinateur portable
+- laptop
+
+Taxonomy matching rules:
+
+1. Try configured category and subcategory values first.
+2. Use configured aliases and accent-insensitive administrator rules where configured.
+3. Use category → subcategory relationships.
+4. If multiple categories match the same subcategory, do not guess without context.
+5. If the value is not supported, return null rather than hallucinating.
+6. A new taxonomy entry may be added through configuration or the demo editor; do not silently invent and persist taxonomy values.
+7. If an LLM proposes an unknown category/subcategory, accept it only when it passes configured validation and confidence policy.
+
+6. Domain parsing rules
+----------------------
+
+6.1 General rules
+
+- Never hallucinate.
+- Never invent a brand.
+- Never invent a reference.
+- Never infer material without explicit evidence or authorized configured inference rules.
+- Preserve product terminology.
+- Prefer explicit evidence over inference.
+- Prefer configured catalog knowledge over generic assumptions.
+- Preserve dimensions and units.
+- Keep references separate from dimensions and models.
+- Detect ambiguity rather than guessing.
+- Keep the parser independent of search and recommendation systems.
+
+6.2 Abbreviation
+
+Add an abbreviation field.
+
+The abbreviation is normally the first term of the description when:
+
+- It is an explicitly configured abbreviation or alias; or
+- It is a short all-capital alphabetic code, such as COU, ROB, or RAC; or
+- A validated LLM extraction supplies it with confidence above the configured threshold.
+
+Do not classify normal long words such as ROBINET or COUDE as abbreviations unless explicitly configured.
+
+The abbreviation rule must be configurable per field. The administrator must be able to customize instructions, examples, allowed values, aliases, regex rules, and confidence thresholds.
+
+6.3 Collisage / packaging prefix
+
+Add a collisage field.
+
+The collisage is extracted only from the beginning of the description when it represents a packaging or selling unit, such as:
+
+- 1pcs
+- 1pc
+- 1kg
+- 1kgrs
+- jeux
+- jeu
+- 1dz
+- 1m
+- rlx
+- lot
+- carton
+- paquet
+
+Do not classify the product term PC in "pc portable" as collisage. An unnumbered PC must be available for name extraction.
+
+Collisage values may be normalized to lowercase using a configured normalization rule.
+
+6.4 Quality
+
+The quality field must recognize configured values including:
+
+- standard
+- premium
+- 1ch
+- 3ch
+- original
+- chinoise
+
+Configured aliases must include examples such as:
+
+- 1 ch -> 1ch
+- 3 ch -> 3ch
+- originale -> original
+- chinois -> chinoise
+
+6.5 Made-in / origin
+
+Add a madein field.
+
+Recognize explicit origin markers:
+
+- Made in
+- Madein
+- Origine
+- Pays
+- Country
+- Provenance
+
+Recognize explicit origin/status values:
+
+- locale
+- local
+- importation
+- import
+- importé
+- importée
+
+Recognize configurable country-code aliases including:
+
+- dz -> Algérie
+- tn -> Tunisie
+- fr -> France
+- it -> Italie
+- usa -> USA
+- us -> USA
+- cn -> Chine
+- china -> Chine
+- chine -> Chine
+
+Do not infer madein from the brand, language, or product category.
+
+Examples:
+
+"robinet 1ch made in dz"
+
+must produce:
+
+quality: "1ch"
+madein: "Algérie"
+
+"robinet original origine fr"
+
+must produce:
+
+quality: "original"
+madein: "France"
+
+Avoid regexes that interpret original as the beginning of the word origine.
+
+6.6 Dimensions
+
+Recognize and preserve:
+
+- 1/2
+- 3/4
+- M8
+- 110x50
+- 110x3.2
+- 4x35
+- 110mm
+- 4m
+- 45deg
+- 45°
+
+Standalone numeric values remain ambiguous unless authorized by context.
+
+Examples:
+
+- "ABC 110" must not arbitrarily become dims: ["110"]. It should remain ambiguous and use the resolver/tool policy.
+- "Tube PVC 110" may extract dims: ["110"] because tube is configured dimensional context.
+- "Coude PVC 110" may extract dims: ["110"] because coude is configured dimensional context.
+- "1pcs pvc coude 110mm 45deg gris" must extract dims: ["110mm", "45deg"].
+
+Only normalize multiplication x when it occurs between numeric values. Do not merge words ending in x, for example JEUX Coude.
+
+6.7 PC portable example
+
+The example configuration must support:
+
+Input:
+
+pc portable hp pavillon dv5 core duo
+
+Expected result:
+
+{
+  "category": "informatique",
+  "subcategory": "pc portable",
+  "name": "pc portable",
+  "abbreviation": null,
+  "collisage": null,
+  "model": "DV5",
+  "brand": "HP",
+  "serie": "Pavilion",
+  "quality": null,
+  "madein": null,
+  "material": null,
+  "dims": [],
+  "color": null,
+  "ref": null,
+  "other": ["core duo"]
+}
+
+Required configuration:
+
+- Brand HP with alias hp.
+- Series Pavilion with aliases pavilion and pavillon.
+- Model extraction regex for DV5-like values, normalized to uppercase.
+- pc portable configured as name and taxonomy value.
+- pc must not be treated as collisage.
+- contiguous unsupported words such as core duo should remain one other phrase where possible.
+
+7. Configuration system
+-----------------------
+
+The configuration must support:
+
+- brands
+- brand aliases
+- series
+- series aliases
+- categories
+- subcategories
+- category/subcategory relationships
+- allowed values
+- aliases
+- field-specific descriptions
+- field-specific LLM instructions
+- field-specific examples
+- field extraction regexes
+- capture groups
+- context terms
+- normalization rules
+- validation rules
+- inference permissions
+- field confidence thresholds
+- global confidence thresholds
+- ambiguity policies
+- retry limits
+- tool-call limits
+- timeout limits
+
+Example field configuration:
+
+fields: {
+  ref: {
+    kind: "string",
+    description: "Product reference / manufacturer reference.",
+    instructions: [
+      "Usually contains letters and numbers.",
+      "May contain hyphens or slashes.",
+      "Prefer explicit REF, Réf, or Reference markers.",
+      "Do not invent a reference."
+    ],
+    examples: ["RA12", "ABC-120", "REF12345"],
+    extract: {
+      patterns: ["\\b(?:REF|RÉF|REFERENCE)\\s*[:#]?\\s*([A-Z0-9][A-Z0-9/_-]*)"],
+      flags: "i",
+      captureGroup: 1
+    }
+  },
+  dims: {
+    kind: "stringArray",
+    description: "Physical dimensions, connection sizes, diameters, lengths, widths, and angles.",
+    instructions: [
+      "Preserve numeric values and units.",
+      "Recognize 1/2, 3/4, M8, 110x50, 110mm, 45deg, and 45°.",
+      "Do not confuse references with dimensions."
+    ],
+    examples: ["1/2", "M8", "110x3.2", "110mm", "45deg", "4m"],
+    extract: {
+      contextTerms: ["tube", "tuyau", "coude", "dn", "diam", "diamètre", "dimension", "longueur", "largeur", "hauteur", "ø"]
+    }
+  },
+  madein: {
+    kind: "string",
+    description: "Country, local/import status, or origin code.",
+    instructions: [
+      "Use explicit Made in, Origine, Pays, Country, Provenance, locale, importation, or configured country codes only.",
+      "Do not infer origin from the brand."
+    ]
+  }
+}
+
+8. Extraction evidence and confidence
+--------------------------------------
+
+Internally maintain:
+
+interface FieldResult<T> {
+  value: T | null;
+  confidence: number;
+  source:
+    | "explicit"
+    | "normalized"
+    | "catalog"
+    | "inferred"
+    | "tool";
+  ambiguous: boolean;
+}
+
+Configurable thresholds:
+
+confidence: {
+  autoAccept: 0.90,
+  requireTool: 0.75,
+  rejectBelow: 0.50
+}
+
+Behavior:
+
+- confidence >= autoAccept: accept.
+- requireTool <= confidence < autoAccept: validate or use a tool.
+- confidence < rejectBelow: null / unresolved.
+- ambiguous=true: use the configured ambiguity policy.
+
+9. Tool calling
+---------------
+
+Implement:
+
+interface ParserTool {
+  name: string;
+  description: string;
+  inputSchema?: unknown;
+  execute(input: unknown): Promise<unknown>;
+}
+
+Implement a ToolRegistry with register, replace, unregister, list, definitions, and execute methods.
+
+The parser must dynamically expose registered tools to the LLM.
+
+Implement a built-in resolver:
+
+resolveProductTerm({
+  term: "Pro",
+  context: "Somatherm",
+  candidateFields: ["serie", "quality", "model"]
+})
+
+Possible responses:
+
+{
+  "status": "resolved",
+  "field": "serie",
+  "value": "Pro",
+  "confidence": 0.98
+}
+
+or:
+
+{
+  "status": "ambiguous",
+  "candidates": [
+    { "field": "serie", "value": "Pro" },
+    { "field": "quality", "value": "Pro" }
+  ]
+}
+
+Use tools only when necessary. Do not call a tool for every high-confidence product.
+
+Bound all calls with:
+
+- maxRetries
+- maxToolCalls
+- timeoutMs
+
+Tool failures must result in controlled warnings and unresolved fields, never a parser crash.
+
+10. LLM architecture
+--------------------
+
+Implement:
+
+interface LLMProvider {
+  readonly modelName?: string;
+  generateStructured(request: StructuredGenerationRequest): Promise<unknown>;
+  generateWithTools(request: ToolGenerationRequest): Promise<LLMToolResponse>;
+}
+
+Implement QwenProvider as an adapter for an injected OpenAI-compatible local chat-completions endpoint. Do not hard-code Ollama or any cloud provider.
+
+The provider must support:
+
+- injectable endpoint
+- injectable model
+- optional API key
+- optional headers
+- injectable fetch implementation for tests
+- temperature 0
+- structured JSON schema
+- OpenAI-compatible tool calls
+- timeout handling
+
+The parser must remain usable without an LLM through the deterministic catalog parser fallback.
+
+11. Prompt architecture
+-----------------------
+
+Implement PromptBuilder. Do not create one giant hard-coded prompt.
+
+Build prompts dynamically from:
+
+- system instructions
+- generated product schema
+- field descriptions
+- field instructions
+- field examples
+- category taxonomy
+- subcategory taxonomy
+- brand catalog
+- series catalog
+- normalization rules
+- available tools
+- raw product input
+- normalized product input
+
+The prompt must tell the model:
+
+- extract only supported information
+- never invent values
+- return null and [] for missing values
+- preserve dimensions and units
+- distinguish references from dimensions/models
+- flag ambiguity
+- use tools only when necessary
+- return structured output only
+- never return chain-of-thought
+
+12. Validation pipeline
+-----------------------
+
+Use this pipeline:
+
+Raw text
+  -> pre-normalization
+  -> dynamic prompt creation
+  -> LLM extraction or deterministic fallback
+  -> JSON parsing
+  -> Zod schema validation
+  -> business validation
+  -> tool validation/resolution
+  -> deterministic field normalization
+  -> final schema validation
+  -> ParsedProduct result
+
+Malformed LLM output must cause a bounded retry or deterministic fallback, never an unhandled crash.
+
+13. Public API
+--------------
+
+Implement:
+
+const parser = new ProductParser({
+  config,
+  llm: optionalProvider,
+  tools: optionalTools,
+  debug: false
+});
+
+const result = await parser.parse(description, {
+  debug: true,
+  includeFieldDetails: true
+});
+
+const batch = await parser.parseBatch(descriptions, {
+  concurrency: 4
+});
+
+Return:
+
+{
+  data: ParsedProduct,
+  metadata: {
+    confidence: number,
+    toolsUsed: string[],
+    warnings: string[],
+    processingTimeMs: number,
+    modelName?: string,
+    rawInput: string,
+    normalizedInput: string,
+    fieldConfidence?: Record<string, unknown>,
+    debug?: {
+      rawInput,
+      normalizedInput,
+      llmRequests,
+      llmResponses,
+      toolCalls,
+      validationErrors,
+      fieldDecisions,
+      finalOutput,
+      timings
+    }
+  }
+}
+
+14. HTML demo
+-------------
+
+Create a professional standalone development demo with inline CSS and no external runtime dependencies.
+
+The demo must include:
+
+- product description textarea
+- Parse Product button
+- predefined test cases
+- JSON output panel
+- field-by-field table
+- confidence indicators
+- source indicators
+- ambiguity indicators
+- tool-call history
+- warnings/errors
+- raw input
+- normalized input
+- latency
+- model name/mode
+- current configuration panel
+- API server port textbox
+- Connect button
+- configuration editor modal
+
+Configuration editor requirements:
+
+1. Categories & subcategories tab
+   - Edit categories JSON.
+   - Edit subcategories JSON.
+   - Support aliases and category relationships.
+
+2. Brands & series tab
+   - Edit brands.
+   - Edit brand aliases.
+   - Edit series.
+   - Edit series aliases.
+
+3. Model rules tab
+   - Edit model regex patterns.
+   - Edit allowed model values.
+   - Configure capture groups.
+
+4. LLM field instructions tab
+   - Select any property.
+   - Edit field description.
+   - Edit instructions line by line.
+   - Edit examples line by line.
+   - Save changes to the running parser.
+
+The UI must call the actual parser/API. Do not use fake hard-coded output.
+
+Implement demo API endpoints:
+
+- GET /api/config
+- POST /api/config
+- POST /api/config/reset
+- POST /api/parse
+
+Saving configuration must validate the configuration and rebuild the active parser.
+
+The server must:
+
+- bind to 0.0.0.0
+- serve demo/index.html
+- support OPTIONS requests
+- provide CORS headers suitable for the live preview
+- return JSON errors
+- support configurable PORT environment variable
+- not require a cloud service
+
+15. Test cases
+--------------
+
+Include tests for:
+
+- clear product
+- abbreviations
+- collisage prefixes
+- category/subcategory taxonomy
+- PC product parsing
+- brand and series matching
+- quality values
+- madein values and country aliases
+- explicit origin markers
+- dimensions including 45deg and 45°
+- standalone dimensional context
+- ambiguous ABC 110
+- brand ambiguity
+- typos
+- missing information
+- multiple dimensions
+- reference extraction
+- normalization
+- schema validation
+- field confidence thresholds
+- tool calling
+- tool failures
+- retry behavior
+- batch parsing
+- custom field configuration
+- customized LLM instructions
+- configuration API updates
+- Qwen provider request/response handling
+
+At minimum, verify these examples:
+
+1. Clear product
+Robinet d'arrêt laiton 1/2 Somatherm Pro RA12
+
+2. Abbreviation
+Rob arrêt lait MF 1/2 Somatherm
+
+3. Dimensions
+Tube PVC 110 x 3.2 gris
+
+4. Reference ambiguity
+Robinet ABC110
+
+5. Brand/series ambiguity
+Robinet Pro 1/2
+
+6. Typo
+robinet arret somathrm 1/2
+
+7. Missing information
+Robinet 1/2
+
+8. Multiple dimensions
+Tube PVC 110x3.2 longueur 4m
+
+9. Brand plus series
+Somatherm Pro robinet arrêt 1/2
+
+10. Packaging, angle, and category
+1pcs pvc coude 110mm 45deg gris
+
+11. PC product
+pc portable hp pavillon dv5 core duo
+
+12. Quality and origin
+robinet 1ch made in dz
+
+16. Repository structure
+------------------------
+
+productName_parser/
+├── src/
+│   ├── core/
+│   │   ├── parser.ts
+│   │   ├── pipeline.ts
+│   │   ├── prompt-builder.ts
+│   │   └── confidence.ts
+│   ├── schema/
+│   │   ├── product.ts
+│   │   └── config.ts
+│   ├── llm/
+│   │   ├── provider.ts
+│   │   └── qwen.ts
+│   ├── tools/
+│   │   ├── registry.ts
+│   │   ├── resolver.ts
+│   │   └── types.ts
+│   ├── normalization/
+│   │   ├── normalizer.ts
+│   │   └── rules.ts
+│   └── index.ts
+├── demo/
+│   ├── index.html
+│   └── server.ts
+├── tests/
+├── examples/
+├── package.json
+├── package-lock.json
+├── tsconfig.json
+├── vitest.config.ts
+├── README.md
+├── .env.example
+└── conversation.chat
+
+17. README requirements
+-----------------------
+
+Document:
+
+- installation
+- build and test commands
+- parser usage
+- schema
+- configurable fields
+- taxonomy configuration
+- brand and series configuration
+- quality and madein configuration
+- abbreviation and collisage rules
+- dimension context and ambiguity
+- custom tools
+- Qwen configuration
+- batch parsing
+- debug mode
+- demo server and API port
+- configuration editor modal
+- adding a new field
+- adding a new LLM provider
+- limitations and no-search scope
+
+18. Definition of done
+----------------------
+
+The project is complete only when:
+
+- TypeScript compiles without errors.
+- All tests pass.
+- The parser returns schema-valid canonical data.
+- Qwen is accessed only through the provider adapter.
+- Function calling works through the generic registry.
+- Taxonomy configuration is dynamic.
+- Brands and series are hierarchical and configurable.
+- Category/subcategory extraction uses the configured taxonomy first.
+- Abbreviation and collisage fields work.
+- Quality and madein fields work.
+- Dimensions including 45deg and 45° work.
+- PC product parsing works.
+- Missing information becomes null/empty.
+- Ambiguity triggers tools or unresolved values rather than guessing.
+- Reference and dimensions remain separate.
+- Normalization is deterministic and configurable.
+- Raw and normalized inputs are preserved.
+- Batch parsing works.
+- Debug information is structured and contains no chain-of-thought.
+- The HTML demo calls the actual parser/API.
+- The configuration editor updates the running parser.
+- The API server supports a configurable port and live preview access.
+- No search, embedding, ranking, or recommendation functionality exists.
+- The project can run locally without a cloud dependency.
+- The final repository is committed and pushed to the configured remote.
+
+Final instruction
+-----------------
+
+Build the actual working project. Prioritize:
+
+Correctness
+> Determinism
+> Extensibility
+> Low latency
+> Developer experience
+
+Do not silently add functionality outside product parsing and normalization.
