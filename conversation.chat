@@ -1,0 +1,169 @@
+Product Parser conversation transcript
+======================================
+
+Security note
+-------------
+A GitHub access token appeared in the conversation. It is intentionally redacted here as [REDACTED_GITHUB_TOKEN]. The token should be revoked and replaced because it was shared in chat.
+
+Conversation scope
+------------------
+The conversation began with a full specification for a production-grade TypeScript/Node.js library named product-parser. The requested library had to parse and normalize product descriptions, use a strongly typed and extensible schema, support configurable fields and domain knowledge, distinguish explicit/normalized/inferred/tool evidence, detect ambiguity, expose generic function tools, support local Qwen through an adapter, preserve raw and normalized input, use Zod validation, support retries/timeouts/batching/debug mode, provide a standalone HTML demo, tests, examples, and documentation, and exclude search, embeddings, ranking, and recommendations.
+
+The requested example was:
+
+Input:
+ROBINET ARRET LAITON MF 1/2 SOMATHERM PRO REF RA12
+
+Expected canonical product:
+{
+  "category": "plomberie",
+  "subcategory": "robinet",
+  "name": "robinet d'arrêt",
+  "model": null,
+  "brand": "Somatherm",
+  "serie": "Pro",
+  "quality": null,
+  "material": "laiton",
+  "dims": ["1/2"],
+  "color": null,
+  "ref": "RA12",
+  "other": ["MF"]
+}
+
+Implementation conversation
+---------------------------
+Assistant: Inspected the empty workspace and created the TypeScript project structure, package configuration, TypeScript configuration, Zod schemas, parser pipeline, normalization layer, Qwen adapter, tool registry, deterministic fallback parser, examples, tests, README, and demo.
+
+Assistant: Installed dependencies, compiled the project, fixed strict TypeScript errors, and added runtime validation and bounded retries.
+
+Assistant: Implemented and tested the clear product example. The deterministic parser returned the expected category, subcategory, name, brand, series, material, dimension, reference, and other token MF without an LLM.
+
+Assistant: Added demo test cases for clear products, abbreviations, dimensions, ambiguity, brand ambiguity, typos, missing information, multiple dimensions, and brand plus series.
+
+Assistant: Started the development demo server on port 4173 and verified the HTTP and API endpoints.
+
+User: Reported the error: Unexpected token 'M', "Method Not Allowed" is not valid JSON.
+
+Assistant: Fixed the demo API handling by adding OPTIONS/CORS support and robust frontend response parsing. Explained that the workspace file viewer cannot make API requests and that the live preview should be used.
+
+User: Requested an API server port textbox.
+
+Assistant: Added an API server port input, Connect button, same-origin fallback, port validation, and dynamic API URL selection. The API and configuration requests now use the selected port.
+
+User: Requested the server to run.
+
+Assistant: Started the Product Parser demo server on port 4173 and verified the web and API endpoints.
+
+User: Reported that the deterministic parser warning appeared in the Warnings and errors section.
+
+Assistant: Changed deterministic offline parsing from a warning to a supported mode. The API now returns an empty warnings array for normal deterministic parsing while exposing the active mode through metadata.
+
+User: Reported that standalone 110 was not recognized as a dimension and that coude was classified as other.
+
+Assistant: Added configured dimensional context handling. Standalone numbers are accepted as dimensions for contexts such as tube, coude, DN, diameter, dimensions, length, width, and height, while ambiguous inputs such as ABC 110 still trigger resolveProductTerm. Added coude to the example name configuration and fixed normalization so JEUX does not merge with the following word.
+
+User: Requested abbreviation and collisage fields. Abbreviation should be extracted from the first term when it is a short code/high-confidence abbreviation. Collisage should recognize first-term packaging values such as 1pcs, 1kg, 1kgrs, jeux, 1dz, 1m, and rlx.
+
+Assistant: Added canonical abbreviation and collisage fields. Abbreviations are extracted from configured values or conservative short uppercase prefixes. Collisage recognizes the requested packaging prefixes. The parser does not treat the normal product word COUDE as an abbreviation. Added tests for all requested packaging values.
+
+User: Requested taxonomy-first category and subcategory extraction using plomberie, électricité, quincaillerie, peinture, droguerie, chauffage, outillage, and construction sets, and reported that 45deg was not captured as a dimension.
+
+Assistant: Added the supplied administrator-owned taxonomy to the demo configuration. Added support for 45deg and 45° dimensions. The example input:
+
+1pcs pvc coude 110mm 45deg gris
+
+now returns the important fields:
+{
+  "category": "plomberie",
+  "subcategory": "pvc",
+  "name": "coude",
+  "collisage": "1pcs",
+  "material": "pvc",
+  "dims": ["110mm", "45deg"],
+  "color": "gris",
+  "other": []
+}
+
+Assistant: Added an explicit informatique extension for computer products because the supplied construction taxonomy did not cover them. Kept unknown taxonomy values unresolved rather than fabricating them, preserving the no-hallucination rule.
+
+User: Reported that "pc portable hp pavillon dv5 core duo" was incorrectly classified with pc as collisage and all useful terms in other.
+
+Assistant: Fixed PC parsing. Added the informatique taxonomy, pc portable name and subcategory, HP brand, Pavilion/pavillon series, DV5 model extraction and uppercase normalization, and grouping of core duo as one other value. The parser now returns:
+{
+  "category": "informatique",
+  "subcategory": "pc portable",
+  "name": "pc portable",
+  "abbreviation": null,
+  "collisage": null,
+  "model": "DV5",
+  "brand": "HP",
+  "serie": "Pavilion",
+  "quality": null,
+  "madein": null,
+  "material": null,
+  "dims": [],
+  "color": null,
+  "ref": null,
+  "other": ["core duo"]
+}
+
+User: Requested a configuration editor modal for categories/subcategories, brands, models, and series, plus customized LLM instructions for every property.
+
+Assistant: Added the Edit configuration modal to the demo. It contains:
+- Categories & subcategories editor
+- Brands & series editor
+- Model regex and allowed-value editor
+- Per-property LLM description, instructions, and examples editor
+- Save configuration action
+- Reset demo config action
+
+The browser sends edited configuration to POST /api/config. The server validates the configuration, rebuilds the active ProductParser, and uses the new configuration for subsequent parses. GET /api/config returns the active configuration.
+
+User: Asked to run the server again for the preview.
+
+Assistant: Reinstalled dependencies when the sandbox cache was unavailable and started the Product Parser demo server on port 4173.
+
+User: Requested creating a new repository named productName_parser and pushing the files.
+
+Assistant: Created /home/user/productName_parser, initialized Git, copied the project files, configured the main branch, and created the initial commit. The repository was later pushed to:
+https://github.com/ammisaidkaidi/productName_parser.git
+
+The GitHub remote later contained an additional workflow commit. The local changes were rebased on that remote history and pushed successfully.
+
+User: Requested quality values such as 1ch, 3ch, original, and chinoise, and a madein field supporting countries, locale/importation, and country abbreviations such as dz, tn, fr, it, and usa.
+
+Assistant: Added quality values and aliases:
+- 1ch
+- 3ch
+- original
+- chinoise
+- 1 ch -> 1ch
+- 3 ch -> 3ch
+- originale -> original
+- chinois -> chinoise
+
+Added the madein field and explicit origin parsing for Made in, Origine, Pays, Country, Provenance, locale, importation, and configured country codes:
+- dz -> Algérie
+- tn -> Tunisie
+- fr -> France
+- it -> Italie
+- usa/us -> USA
+- cn/china/chine -> Chine
+- local -> locale
+- import/importé/importée -> importation
+
+Also fixed an origin regex issue where the word original could be incorrectly read as an origin marker.
+
+Validation at the time of saving this transcript:
+- TypeScript build passed
+- 41 tests passed
+- Demo server active on port 4173
+
+Repository state
+----------------
+Repository: productName_parser
+Branch: main
+Latest pushed commit: 0715c2f Add quality and origin fields
+Remote: https://github.com/ammisaidkaidi/productName_parser.git
+
+The GitHub token is not included in this file. Revoke the token that was shared in chat and use a newly generated credential for future repository operations.
