@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Product Parser Demo</title>
+  <style>
+    :root { color-scheme: dark; --bg:#0b1120; --panel:#111a2e; --panel2:#17233b; --line:#263654; --text:#e7eefb; --muted:#8fa2c2; --accent:#72a7ff; --good:#49d49d; --warn:#f5bf5d; --bad:#ff7887; }
+    * { box-sizing:border-box; }
+    body { margin:0; font-family: Inter, ui-sans-serif, system-ui, -apple-system, sans-serif; background:linear-gradient(135deg,#0a1020,#101b32 60%,#0c1529); color:var(--text); min-height:100vh; }
+    .shell { max-width:1400px; margin:0 auto; padding:32px 22px 52px; }
+    header { display:flex; align-items:flex-end; justify-content:space-between; gap:20px; margin-bottom:24px; }
+    h1 { font-size:clamp(28px,4vw,44px); margin:0 0 8px; letter-spacing:-.04em; }
+    .subtitle { color:var(--muted); max-width:720px; line-height:1.5; }
+    .badge { border:1px solid #31538c; color:#a8c7ff; background:#102044; padding:8px 12px; border-radius:999px; font-size:12px; white-space:nowrap; }
+    .grid { display:grid; grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr); gap:18px; }
+    .panel { background:rgba(17,26,46,.9); border:1px solid var(--line); border-radius:16px; box-shadow:0 16px 38px rgba(0,0,0,.18); overflow:hidden; }
+    .panel-head { padding:17px 20px 13px; border-bottom:1px solid var(--line); display:flex; justify-content:space-between; align-items:center; gap:12px; }
+    .panel-head h2 { margin:0; font-size:15px; letter-spacing:.02em; }
+    .panel-body { padding:20px; }
+    label { display:block; color:#bfd0ed; font-size:12px; text-transform:uppercase; letter-spacing:.1em; margin:0 0 9px; }
+    textarea { width:100%; min-height:124px; resize:vertical; border:1px solid #324566; border-radius:12px; background:#0b1428; color:var(--text); padding:15px; font:500 15px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace; outline:none; }
+    textarea:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(114,167,255,.13); }
+    .actions { display:flex; align-items:center; gap:10px; margin-top:13px; flex-wrap:wrap; }
+    .actions.compact { margin:0; }
+    button, select { border-radius:9px; border:1px solid #3a5b95; background:#1d4d9b; color:white; padding:10px 15px; font-weight:700; cursor:pointer; }
+    button:hover { background:#2867c6; }
+    select { background:#0f1d35; border-color:#324566; font-weight:500; }
+    button.secondary { background:#14233e; border-color:#324566; color:#c9d8f0; }
+    button:disabled { opacity:.55; cursor:wait; }
+    .status { color:var(--muted); font-size:12px; }
+    .port-row { display:flex; align-items:center; gap:9px; flex-wrap:wrap; margin-top:16px; padding:12px; border:1px solid #223454; border-radius:10px; background:#0d172b; }
+    .port-row label { margin:0; text-transform:none; letter-spacing:0; font-size:12px; color:#bfd0ed; }
+    .port-row input { width:175px; border:1px solid #324566; border-radius:8px; background:#0b1428; color:var(--text); padding:9px 10px; outline:none; }
+    .port-row input:focus { border-color:var(--accent); box-shadow:0 0 0 3px rgba(114,167,255,.13); }
+    .meta { display:grid; grid-template-columns:repeat(3,1fr); gap:9px; margin-top:16px; }
+    .stat { background:#0d172b; border:1px solid #223454; border-radius:10px; padding:11px; min-width:0; }
+    .stat span { display:block; color:var(--muted); font-size:11px; margin-bottom:5px; }
+    .stat strong { display:block; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:13px; }
+    .table-wrap { overflow:auto; }
+    table { width:100%; border-collapse:collapse; font-size:13px; }
+    th, td { text-align:left; padding:10px 9px; border-bottom:1px solid #22304a; vertical-align:top; }
+    th { color:var(--muted); font-size:11px; text-transform:uppercase; letter-spacing:.08em; }
+    td:first-child { color:#aac1e9; font-family:ui-monospace,monospace; width:25%; }
+    .value { color:#f1f5ff; word-break:break-word; }
+    .null { color:#6e819f; }
+    .confidence { min-width:80px; }
+    .bar { height:6px; background:#263650; border-radius:10px; overflow:hidden; margin-top:5px; }
+    .bar i { display:block; height:100%; border-radius:10px; background:var(--good); }
+    .bar.warn i { background:var(--warn); }
+    .bar.bad i { background:var(--bad); }
+    .pill { display:inline-block; padding:3px 7px; border-radius:999px; font-size:10px; border:1px solid #315084; color:#a9c6f7; background:#122344; }
+    .pill.warn { color:#ffda8a; border-color:#83622a; background:#33270f; }
+    .pill.bad { color:#ffadb7; border-color:#7c3541; background:#32151c; }
+    pre { margin:0; white-space:pre-wrap; word-break:break-word; font:12px/1.55 ui-monospace,SFMono-Regular,Menlo,monospace; color:#c9d9f5; }
+    .code { max-height:380px; overflow:auto; background:#0a1325; border:1px solid #223454; border-radius:10px; padding:14px; }
+    .stack { display:grid; gap:14px; }
+    .subpanel { background:#0d172b; border:1px solid #223454; border-radius:12px; padding:14px; }
+    .subpanel h3 { margin:0 0 10px; font-size:12px; text-transform:uppercase; letter-spacing:.09em; color:#a9bddd; }
+    .empty { color:var(--muted); font-size:13px; }
+    .error { color:#ffadb7; background:#33161f; border:1px solid #773844; border-radius:9px; padding:10px; font-size:13px; }
+    .full { grid-column:1/-1; }
+    .modal[hidden] { display:none; }
+    .modal { position:fixed; inset:0; z-index:10; display:flex; align-items:center; justify-content:center; padding:20px; background:rgba(2,7,18,.78); }
+    .modal-card { width:min(980px,100%); max-height:92vh; overflow:auto; background:#111a2e; border:1px solid #3a527d; border-radius:16px; box-shadow:0 24px 80px rgba(0,0,0,.55); }
+    .modal-head { display:flex; align-items:center; justify-content:space-between; gap:12px; padding:18px 20px; border-bottom:1px solid var(--line); position:sticky; top:0; background:#111a2e; z-index:1; }
+    .modal-head h2 { margin:0; font-size:18px; }
+    .close { background:transparent; border:0; color:var(--muted); font-size:22px; padding:2px 8px; }
+    .tabs { display:flex; gap:6px; padding:14px 20px 0; border-bottom:1px solid var(--line); overflow:auto; }
+    .tab { background:transparent; border:0; border-bottom:2px solid transparent; border-radius:0; color:var(--muted); padding:10px 12px; white-space:nowrap; }
+    .tab.active { color:#eaf1ff; border-color:var(--accent); }
+    .modal-body { padding:20px; }
+    .tab-content[hidden] { display:none; }
+    .editor-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; }
+    .editor-field { display:grid; gap:7px; }
+    .editor-field.full-width { grid-column:1/-1; }
+    .editor-field textarea, .editor-field input, .editor-field select { width:100%; min-height:110px; border:1px solid #324566; border-radius:9px; background:#0b1428; color:var(--text); padding:10px; font:12px/1.45 ui-monospace,SFMono-Regular,Menlo,monospace; }
+    .editor-field input, .editor-field select { min-height:auto; font-family:inherit; }
+    .hint { color:var(--muted); font-size:12px; line-height:1.45; }
+    .modal-foot { display:flex; justify-content:space-between; gap:10px; align-items:center; padding:14px 20px 20px; border-top:1px solid var(--line); }
+    .modal-error { color:#ffadb7; font-size:12px; max-width:70%; }
+    @media (max-width: 900px) { .grid { grid-template-columns:1fr; } header { align-items:flex-start; flex-direction:column; } .editor-grid { grid-template-columns:1fr; } .editor-field.full-width { grid-column:auto; } }
+  </style>
+</head>
+<body>
+  <main class="shell">
+    <header>
+      <div><h1>Product Parser</h1><div class="subtitle">Deterministic product extraction with configurable catalog knowledge, field confidence, normalization, and bounded tool resolution.</div></div>
+      <div class="badge" id="modelBadge">Loading model…</div>
+    </header>
+
+    <div class="grid">
+      <section class="panel">
+        <div class="panel-head"><h2>Parse a product description</h2><span class="status" id="status">Ready</span></div>
+        <div class="panel-body">
+          <label for="input">Product description</label>
+          <textarea id="input">ROBINET ARRET LAITON MF 1/2 SOMATHERM PRO REF RA12</textarea>
+          <div class="actions">
+            <button id="parse">Parse Product</button>
+            <select id="preset" aria-label="Demo test case"></select>
+            <button class="secondary" id="load">Load test case</button>
+          </div>
+          <div class="port-row">
+            <label for="apiPort">API server port</label>
+            <input id="apiPort" type="number" min="1" max="65535" placeholder="same origin, e.g. 4173" />
+            <button class="secondary" id="applyPort">Connect</button>
+            <span class="status" id="apiStatus">Using this page origin</span>
+          </div>
+          <div class="meta">
+            <div class="stat"><span>Latency</span><strong id="latency">—</strong></div>
+            <div class="stat"><span>Overall confidence</span><strong id="overall">—</strong></div>
+            <div class="stat"><span>Model / mode</span><strong id="model">—</strong></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Configuration</h2><div class="actions compact"><span class="status">Administrator-owned</span><button class="secondary" id="editConfig">Edit configuration</button></div></div>
+        <div class="panel-body"><div class="code"><pre id="config">Loading…</pre></div></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Parsed product</h2><span class="status" id="fieldCount">—</span></div>
+        <div class="panel-body" id="resultBody"><div class="empty">Run a parse to inspect field-level decisions.</div></div>
+      </section>
+
+      <section class="panel">
+        <div class="panel-head"><h2>Execution details</h2><span class="status">No chain-of-thought exposed</span></div>
+        <div class="panel-body stack">
+          <div class="subpanel"><h3>Tool-call history</h3><div id="tools" class="empty">No tool calls.</div></div>
+          <div class="subpanel"><h3>Warnings and errors</h3><div id="warnings" class="empty">None.</div></div>
+          <div class="subpanel"><h3>Input trace</h3><pre id="trace" class="code">—</pre></div>
+        </div>
+      </section>
+
+      <section class="panel full">
+        <div class="panel-head"><h2>Validated JSON</h2><button class="secondary" id="copy">Copy JSON</button></div>
+        <div class="panel-body"><pre id="json" class="code">{}</pre></div>
+      </section>
+    </div>
+  </main>
+
+  <div class="modal" id="configModal" hidden>
+    <div class="modal-card" role="dialog" aria-modal="true" aria-labelledby="configModalTitle">
+      <div class="modal-head"><h2 id="configModalTitle">Edit parser configuration</h2><button class="close" id="closeConfig" aria-label="Close">×</button></div>
+      <div class="tabs">
+        <button class="tab active" data-tab="taxonomyTab">Categories & subcategories</button>
+        <button class="tab" data-tab="catalogTab">Brands & series</button>
+        <button class="tab" data-tab="modelTab">Model rules</button>
+        <button class="tab" data-tab="instructionsTab">LLM field instructions</button>
+      </div>
+      <div class="modal-body">
+        <section class="tab-content" id="taxonomyTab">
+          <p class="hint">Edit the administrator-owned taxonomy. Use JSON arrays of objects. Changes are applied to the running parser after saving.</p>
+          <div class="editor-grid">
+            <div class="editor-field"><label for="categoriesEditor">Categories</label><textarea id="categoriesEditor" spellcheck="false"></textarea></div>
+            <div class="editor-field"><label for="subcategoriesEditor">Subcategories</label><textarea id="subcategoriesEditor" spellcheck="false"></textarea></div>
+          </div>
+        </section>
+        <section class="tab-content" id="catalogTab" hidden>
+          <p class="hint">A brand can contain a <code>series</code> array with strings or objects such as <code>{"name":"Pavilion","aliases":["pavillon"]}</code>.</p>
+          <div class="editor-field"><label for="brandsEditor">Brands, aliases, and series</label><textarea id="brandsEditor" spellcheck="false"></textarea></div>
+        </section>
+        <section class="tab-content" id="modelTab" hidden>
+          <p class="hint">Model rules are applied before ambiguity detection. Patterns use JavaScript regular expressions and the configured capture group.</p>
+          <div class="editor-grid">
+            <div class="editor-field"><label for="modelPatternsEditor">Model extraction patterns</label><textarea id="modelPatternsEditor" spellcheck="false"></textarea></div>
+            <div class="editor-field"><label for="modelValuesEditor">Allowed model values, one per line</label><textarea id="modelValuesEditor" spellcheck="false"></textarea></div>
+          </div>
+        </section>
+        <section class="tab-content" id="instructionsTab" hidden>
+          <p class="hint">These instructions are inserted into the dynamic LLM prompt for the selected property. One instruction or example per line.</p>
+          <div class="editor-grid">
+            <div class="editor-field"><label for="fieldSelect">Property</label><select id="fieldSelect"></select></div>
+            <div class="editor-field"><label for="fieldDescriptionEditor">Description</label><input id="fieldDescriptionEditor" /></div>
+            <div class="editor-field"><label for="fieldInstructionsEditor">Instructions</label><textarea id="fieldInstructionsEditor" spellcheck="false"></textarea></div>
+            <div class="editor-field"><label for="fieldExamplesEditor">Examples</label><textarea id="fieldExamplesEditor" spellcheck="false"></textarea></div>
+          </div>
+        </section>
+      </div>
+      <div class="modal-foot"><span class="modal-error" id="modalError"></span><div class="actions compact"><button class="secondary" id="resetConfig">Reset demo config</button><button id="saveConfig">Save configuration</button></div></div>
+    </div>
+  </div>
+<script>
+  const cases = [
+    ["Clear product", "Robinet d'arrêt laiton 1/2 Somatherm Pro RA12"],
+    ["Abbreviation", "Rob arrêt lait MF 1/2 Somatherm"],
+    ["Dimensions", "Tube PVC 110 x 3.2 gris"],
+    ["Reference ambiguity", "Robinet ABC110"],
+    ["Brand / series ambiguity", "Robinet Pro 1/2"],
+    ["Typo", "robinet arret somathrm 1/2"],
+    ["Missing information", "Robinet 1/2"],
+    ["Multiple dimensions", "Tube PVC 110x3.2 longueur 4m"],
+    ["Brand + series", "Somatherm Pro robinet arrêt 1/2"]
+  ];
+  const $ = (id) => document.getElementById(id);
+  let currentConfig = null;
+  let draftConfig = null;
+  cases.forEach(([name]) => { const option = document.createElement('option'); option.textContent = name; option.value = name; $('preset').appendChild(option); });
+  $('load').onclick = () => { const item = cases.find(([name]) => name === $('preset').value); if (item) $('input').value = item[1]; };
+  $('copy').onclick = async () => { await navigator.clipboard?.writeText($('json').textContent || ''); $('copy').textContent = 'Copied'; setTimeout(() => $('copy').textContent = 'Copy JSON', 1100); };
+
+  $('editConfig').onclick = () => {
+    if (!currentConfig) return;
+    draftConfig = JSON.parse(JSON.stringify(currentConfig));
+    populateEditors();
+    $('modalError').textContent = '';
+    $('configModal').hidden = false;
+  };
+  $('closeConfig').onclick = () => { $('configModal').hidden = true; };
+  $('configModal').onclick = (event) => { if (event.target === $('configModal')) $('configModal').hidden = true; };
+  document.querySelectorAll('.tab').forEach((tab) => tab.onclick = () => {
+    document.querySelectorAll('.tab').forEach((item) => item.classList.toggle('active', item === tab));
+    document.querySelectorAll('.tab-content').forEach((content) => content.hidden = content.id !== tab.dataset.tab);
+  });
+  $('fieldSelect').onchange = () => { syncInstructionEditor(); loadSelectedFieldEditor(); };
+  $('saveConfig').onclick = () => saveConfiguration();
+  $('resetConfig').onclick = () => resetConfiguration();
+
+  function populateEditors() {
+    $('categoriesEditor').value = JSON.stringify(draftConfig.categories || [], null, 2);
+    $('subcategoriesEditor').value = JSON.stringify(draftConfig.subcategories || [], null, 2);
+    $('brandsEditor').value = JSON.stringify(draftConfig.brands || [], null, 2);
+    const model = draftConfig.fields?.model || {};
+    $('modelPatternsEditor').value = JSON.stringify(model.extract?.patterns || [], null, 2);
+    $('modelValuesEditor').value = (model.allowedValues || []).join('\\n');
+    $('fieldSelect').innerHTML = Object.keys(draftConfig.fields || {}).map((name) => '<option value="' + escapeHtml(name) + '">' + escapeHtml(name) + '</option>').join('');
+    loadSelectedFieldEditor();
+  }
+
+  function loadSelectedFieldEditor() {
+    const field = draftConfig?.fields?.[$('fieldSelect').value] || {};
+    $('fieldDescriptionEditor').value = field.description || '';
+    $('fieldInstructionsEditor').value = (field.instructions || []).join('\\n');
+    $('fieldExamplesEditor').value = (field.examples || []).join('\\n');
+  }
+
+  function syncInstructionEditor() {
+    if (!draftConfig?.fields?.[$('fieldSelect').value]) return;
+    const field = draftConfig.fields[$('fieldSelect').value];
+    field.description = $('fieldDescriptionEditor').value.trim();
+    field.instructions = lines($('fieldInstructionsEditor').value);
+    field.examples = lines($('fieldExamplesEditor').value);
+  }
+
+  async function saveConfiguration() {
+    try {
+      syncInstructionEditor();
+      draftConfig.categories = JSON.parse($('categoriesEditor').value);
+      draftConfig.subcategories = JSON.parse($('subcategoriesEditor').value);
+      draftConfig.brands = JSON.parse($('brandsEditor').value);
+      const model = draftConfig.fields.model || { kind: 'string' };
+      model.kind = 'string';
+      model.allowedValues = lines($('modelValuesEditor').value);
+      model.extract = { ...(model.extract || {}), patterns: JSON.parse($('modelPatternsEditor').value) };
+      draftConfig.fields.model = model;
+      const response = await fetch(apiUrl('/api/config'), { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({config:draftConfig}) });
+      const text = await response.text();
+      const payload = JSON.parse(text);
+      if (!response.ok) throw new Error(payload.error || 'Configuration save failed');
+      currentConfig = payload.config;
+      $('config').textContent = JSON.stringify(currentConfig, null, 2);
+      $('modelBadge').textContent = payload.model;
+      $('apiStatus').textContent = 'Configuration saved';
+      $('configModal').hidden = true;
+    } catch (error) {
+      $('modalError').textContent = error instanceof SyntaxError ? 'Invalid JSON in one of the editor fields.' : error.message;
+    }
+  }
+
+  async function resetConfiguration() {
+    try {
+      const response = await fetch(apiUrl('/api/config/reset'), { method:'POST' });
+      const payload = JSON.parse(await response.text());
+      if (!response.ok) throw new Error(payload.error || 'Configuration reset failed');
+      currentConfig = payload.config;
+      draftConfig = JSON.parse(JSON.stringify(currentConfig));
+      $('config').textContent = JSON.stringify(currentConfig, null, 2);
+      $('modelBadge').textContent = payload.model;
+      populateEditors();
+      $('modalError').textContent = '';
+      $('apiStatus').textContent = 'Configuration reset';
+    } catch (error) { $('modalError').textContent = error.message; }
+  }
+
+  function lines(value) { return value.split(/\\r?\\n/).map((item) => item.trim()).filter(Boolean); }
+
+  $('applyPort').onclick = () => loadConfiguration();
+
+  function apiBase() {
+    const value = $('apiPort').value.trim();
+    if (!value) return '';
+    const port = Number(value);
+    if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error('API port must be an integer between 1 and 65535.');
+    if (location.protocol === 'file:') return 'http://localhost:' + port;
+    const url = new URL(location.href);
+    url.port = String(port);
+    return url.origin;
+  }
+
+  function apiUrl(path) { return apiBase() + path; }
+
+  async function loadConfiguration() {
+    try {
+      $('apiStatus').textContent = 'Connecting…';
+      const response = await fetch(apiUrl('/api/config'));
+      const responseText = await response.text();
+      let payload;
+      try { payload = JSON.parse(responseText); }
+      catch { throw new Error('API returned ' + response.status + ': ' + responseText.slice(0, 120)); }
+      if (!response.ok) throw new Error(payload.error || 'Configuration request failed');
+      currentConfig = payload.config;
+      $('config').textContent = JSON.stringify(currentConfig, null, 2);
+      $('modelBadge').textContent = payload.model;
+      $('apiStatus').textContent = 'Connected to ' + (apiBase() || 'this page origin');
+    } catch (error) {
+      $('apiStatus').textContent = 'Connection failed';
+      $('config').textContent = error.message + '\\n\\nStart the API with: npm run demo';
+    }
+  }
+
+  loadConfiguration();
+
+  $('parse').onclick = async () => {
+    $('parse').disabled = true; $('status').textContent = 'Parsing…';
+    try {
+      const response = await fetch(apiUrl('/api/parse'), { method:'POST', headers:{'content-type':'application/json'}, body:JSON.stringify({input:$('input').value}) });
+      const responseText = await response.text();
+      let result;
+      try { result = JSON.parse(responseText); }
+      catch { throw new Error('Parser API returned ' + response.status + ': ' + responseText.slice(0, 160) + '. Run the demo with npm run demo and open its live preview; the workspace file viewer cannot make API requests.'); }
+      if (!response.ok) throw new Error(result.error || 'Parse failed');
+      render(result);
+      $('status').textContent = 'Complete';
+    } catch (error) { $('status').textContent = 'Error'; $('resultBody').innerHTML = '<div class="error">' + escapeHtml(error.message) + '</div>'; }
+    finally { $('parse').disabled = false; }
+  };
+  function render(result) {
+    const confidence = result.metadata.fieldConfidence || {};
+    const rows = Object.entries(result.data).map(([name, value]) => {
+      const detail = confidence[name] || {confidence: value == null ? 1 : 0, source:'unknown', ambiguous:false};
+      const pct = Math.round(detail.confidence * 100); const cls = detail.ambiguous ? 'bad' : pct < 75 ? 'warn' : '';
+      const shown = value === null ? '<span class="null">null</span>' : escapeHtml(JSON.stringify(value));
+      return '<tr><td>' + escapeHtml(name) + '</td><td class="value">' + shown + '</td><td class="confidence"><span class="pill ' + (detail.ambiguous ? 'bad' : '') + '">' + pct + '%</span><div class="bar ' + cls + '"><i style="width:' + pct + '%"></i></div></td><td><span class="pill ' + (detail.ambiguous ? 'warn' : '') + '">' + escapeHtml(detail.source) + '</span>' + (detail.ambiguous ? ' <span class="pill bad">ambiguous</span>' : '') + '</td></tr>';
+    }).join('');
+    $('resultBody').innerHTML = '<div class="table-wrap"><table><thead><tr><th>Field</th><th>Value</th><th>Confidence</th><th>Decision</th></tr></thead><tbody>' + rows + '</tbody></table></div>';
+    $('fieldCount').textContent = Object.keys(result.data).length + ' fields';
+    $('latency').textContent = result.metadata.processingTimeMs + ' ms';
+    $('overall').textContent = Math.round(result.metadata.confidence * 100) + '%';
+    $('model').textContent = result.metadata.modelName || 'local deterministic';
+    $('json').textContent = JSON.stringify(result.data, null, 2);
+    const toolCalls = result.metadata.debug?.toolCalls || [];
+    $('tools').innerHTML = toolCalls.length ? toolCalls.map(call => '<div class="subpanel" style="margin-bottom:8px"><strong>' + escapeHtml(call.name) + '</strong> <span class="status">' + call.durationMs + ' ms</span><pre>' + escapeHtml(JSON.stringify({input:call.input, output:call.output, error:call.error}, null, 2)) + '</pre></div>').join('') : '<span class="empty">No tool calls; high-confidence fields were accepted directly.</span>';
+    const warnings = result.metadata.warnings || [];
+    $('warnings').innerHTML = warnings.length ? warnings.map(item => '<div class="error" style="margin-bottom:7px">' + escapeHtml(item) + '</div>').join('') : 'None.';
+    $('trace').textContent = JSON.stringify({rawInput: result.metadata.rawInput, normalizedInput: result.metadata.normalizedInput, processingTimeMs: result.metadata.processingTimeMs}, null, 2);
+  }
+  function escapeHtml(value) { return String(value).replace(/[&<>"']/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char])); }
+</script>
+</body>
+</html>
