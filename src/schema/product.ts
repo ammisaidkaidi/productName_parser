@@ -11,6 +11,7 @@ export const BASE_PRODUCT_FIELDS = [
   "brand",
   "serie",
   "quality",
+  "madein",
   "material",
   "dims",
   "color",
@@ -30,6 +31,7 @@ export interface ParsedProduct {
   brand: string | null;
   serie: string | null;
   quality: string | null;
+  madein: string | null;
   material: string | null;
   dims: string[];
   color: string | null;
@@ -62,6 +64,7 @@ export const ParsedProductSchema = z
     brand: z.string().nullable(),
     serie: z.string().nullable(),
     quality: z.string().nullable(),
+    madein: z.string().nullable(),
     material: z.string().nullable(),
     dims: z.array(z.string()),
     color: z.string().nullable(),
@@ -97,6 +100,7 @@ export function createProductSchema(fields: Record<string, FieldConfig>): z.ZodT
     brand: z.string().nullable(),
     serie: z.string().nullable(),
     quality: z.string().nullable(),
+    madein: z.string().nullable(),
     material: z.string().nullable(),
     dims: z.array(z.string()),
     color: z.string().nullable(),
@@ -121,6 +125,7 @@ export function emptyProduct(fields: Record<string, FieldConfig> = {}): ProductR
     brand: null,
     serie: null,
     quality: null,
+    madein: null,
     material: null,
     dims: [],
     color: null,

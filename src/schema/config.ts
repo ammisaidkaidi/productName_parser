@@ -163,8 +163,24 @@ export const DEFAULT_FIELD_CONFIG: Record<string, FieldConfig> = {
 
   brand: { kind: "string", description: "Manufacturer or brand." },
   serie: { kind: "string", description: "Brand-specific series or range." },
-  quality: { kind: "string", description: "Quality, grade, or finish designation." },
+  quality: {
+    kind: "string",
+    description: "Quality, grade, or finish designation.",
+    allowedValues: ["standard", "premium", "1ch", "3ch", "original", "chinoise"],
+    aliases: { "1 ch": "1ch", "3 ch": "3ch", originale: "original", chinois: "chinoise" }
+  },
+  madein: {
+    kind: "string",
+    description: "Country, local/import status, or origin code.",
+    allowedValues: ["Algérie", "Tunisie", "France", "Italie", "USA", "Chine", "locale", "importation"],
+    aliases: {
+      dz: "Algérie", tn: "Tunisie", fr: "France", it: "Italie", usa: "USA", us: "USA",
+      cn: "Chine", china: "Chine", chine: "Chine", local: "locale", import: "importation", importée: "importation", importé: "importation"
+    },
+    instructions: ["Prefer explicit markers such as Made in, Origine, Pays, Country, Provenance, or an authorized country code.", "Do not infer country from brand or language."]
+  },
   material: { kind: "string", description: "Explicit material only; do not infer without configuration." },
+
   dims: { kind: "stringArray", description: "Physical dimensions, connection sizes, diameters, lengths, and widths." },
   color: { kind: "string", description: "Explicit color." },
   ref: { kind: "string", description: "Product or manufacturer reference." },

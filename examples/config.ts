@@ -100,7 +100,23 @@ export const exampleConfig: ParserConfig = {
     },
     quality: {
       kind: "string",
-      allowedValues: ["standard", "premium"]
+      allowedValues: ["standard", "premium", "1ch", "3ch", "original", "chinoise"],
+      aliases: { "1 ch": "1ch", "3 ch": "3ch", originale: "original", chinois: "chinoise" }
+    },
+    madein: {
+      kind: "string",
+      description: "Country, local/import status, or origin code.",
+      allowedValues: ["Algérie", "Tunisie", "France", "Italie", "USA", "Chine", "locale", "importation"],
+      aliases: {
+        dz: "Algérie", tn: "Tunisie", fr: "France", it: "Italie", usa: "USA", us: "USA",
+        cn: "Chine", china: "Chine", chine: "Chine", local: "locale", import: "importation", importée: "importation", importé: "importation"
+      },
+      instructions: ["Use explicit Made in, Origine, Pays, Country, Provenance, locale, importation, or configured country codes only."],
+      extract: {
+        patterns: ["\\b(?:made\\s+in|madein|origin(?:e)?\\b|pays\\b|country\\b|provenance\\b)\\s*[:=-]?\\s*([A-Za-zÀ-ÿ]+)"],
+        flags: "i",
+        captureGroup: 1
+      }
     },
     ref: {
       kind: "string",

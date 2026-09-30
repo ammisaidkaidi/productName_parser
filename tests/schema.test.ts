@@ -4,7 +4,7 @@ import { mergeParserConfig } from "../src/schema/config.js";
 
 const valid = {
   category: "plomberie", subcategory: "robinet", name: "robinet d'arrêt", abbreviation: null, collisage: null, model: null,
-  brand: "Somatherm", serie: "Pro", quality: null, material: "laiton", dims: ["1/2"],
+  brand: "Somatherm", serie: "Pro", quality: null, madein: null, material: "laiton", dims: ["1/2"],
   color: null, ref: "RA12", other: ["MF"]
 };
 

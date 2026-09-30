@@ -53,6 +53,7 @@ console.log(result.data);
 //   brand: "Somatherm",
 //   serie: "Pro",
 //   quality: null,
+//   madein: null,
 //   material: "laiton",
 //   dims: ["1/2"],
 //   color: null,
@@ -81,6 +82,7 @@ interface ParsedProduct {
   brand: string | null;
   serie: string | null;
   quality: string | null;
+  madein: string | null;
   material: string | null;
   dims: string[];
   color: string | null;

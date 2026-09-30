@@ -21,7 +21,7 @@ function envelope(data: Record<string, unknown>): LLMToolResponse {
 
 const emptyData = {
   category: null, subcategory: null, name: null, abbreviation: null, collisage: null, model: null, brand: null, serie: null,
-  quality: null, material: null, dims: [], color: null, ref: null, other: []
+  quality: null, madein: null, material: null, dims: [], color: null, ref: null, other: []
 };
 
 describe("ProductParser pipeline", () => {
@@ -30,9 +30,22 @@ describe("ProductParser pipeline", () => {
     const result = await parser.parse("ROBINET ARRET LAITON MF 1/2 SOMATHERM PRO REF RA12");
     expect(result.data).toEqual({
       category: "plomberie", subcategory: "robinet", name: "robinet d'arrêt", abbreviation: null, collisage: null, model: null,
-      brand: "Somatherm", serie: "Pro", quality: null, material: "laiton", dims: ["1/2"],
+      brand: "Somatherm", serie: "Pro", quality: null, madein: null, material: "laiton", dims: ["1/2"],
       color: null, ref: "RA12", other: ["MF"]
     });
+  });
+
+  it("extracts configured quality and country-of-origin values", async () => {
+    const parser = new ProductParser({ config: exampleConfig });
+    const result = await parser.parse("robinet 1ch made in dz");
+    expect(result.data.quality).toBe("1ch");
+    expect(result.data.madein).toBe("Algérie");
+  });
+
+  it("recognizes local and importation origin labels", async () => {
+    const parser = new ProductParser({ config: exampleConfig });
+    expect((await parser.parse("robinet locale")).data.madein).toBe("locale");
+    expect((await parser.parse("robinet importation")).data.madein).toBe("importation");
   });
 
   it("does not hallucinate missing catalog properties", async () => {
